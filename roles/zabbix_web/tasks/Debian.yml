@@ -137,6 +137,7 @@
     src: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     path: "/usr/share/zabbix/fonts/graphfont.ttf"
     state: link
+    follow: false
   become: true
   tags:
     - install
