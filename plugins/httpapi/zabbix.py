@@ -52,6 +52,7 @@ options:
 
 import json
 import base64
+import re
 
 from uuid import uuid4
 
@@ -134,13 +135,17 @@ class HttpApi(HttpApiBase):
         if not data:
             data = {}
 
-        if self.connection._auth:
-            data['auth'] = self.connection._auth['auth']
-
         hdrs = {
             'Content-Type': 'application/json-rpc',
             'Accept': 'application/json',
         }
+
+        if self.connection._auth:
+            if hasattr(self.connection, 'zbx_api_version') and re.match('^7\..*$', self.connection.zbx_api_version):
+                hdrs['Authorization'] = ('Bearer %s' % (self.connection._auth['auth']))
+            else:
+                data['auth'] = self.connection._auth['auth']
+
         http_login_user = self.get_option('http_login_user')
         http_login_password = self.get_option('http_login_password')
         if http_login_user and http_login_user != '-42':
