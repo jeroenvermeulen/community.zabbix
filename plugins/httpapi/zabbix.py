@@ -141,7 +141,7 @@ class HttpApi(HttpApiBase):
         }
 
         if self.connection._auth:
-            if hasattr(self.connection, 'zbx_api_version') and re.match('^7\..*$', self.connection.zbx_api_version):
+            if hasattr(self.connection, 'zbx_api_version') and re.match('^7\\..*$', self.connection.zbx_api_version):
                 hdrs['Authorization'] = ('Bearer %s' % (self.connection._auth['auth']))
             else:
                 data['auth'] = self.connection._auth['auth']
