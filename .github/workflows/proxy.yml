@@ -7,12 +7,18 @@ on:
       - "molecule/zabbix_proxy/**"
       - "molecule/requirements.txt"
       - ".github/workflows/proxy.yml"
+      - "roles/zabbix_repo/**"
+      - "molecule/zabbix_repo/**"
+      - ".github/workflows/repo.yml"
   pull_request:
     paths:
       - "roles/zabbix_proxy/**"
       - "molecule/zabbix_proxy/**"
       - "molecule/requirements.txt"
       - ".github/workflows/proxy.yml"
+      - "roles/zabbix_repo/**"
+      - "molecule/zabbix_repo/**"
+      - ".github/workflows/repo.yml"
 jobs:
   molecule:
     runs-on: ubuntu-20.04
@@ -27,6 +33,7 @@ jobs:
           - ubuntu2004
           - debian12
           - debian11
+          - opensuseleap15
         collection_role:
           - zabbix_proxy
         database:
@@ -34,25 +41,17 @@ jobs:
           - pgsql
           - sqlite3
         version:
+          - v70
           - v64
-          - v62
           - v60
-        exclude:
-          - container:
-              name: debian12
-              base_image: debian:12
-              os_family: debian
-            version: v62
-          - container: ubuntu2404
-            version: v62
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: 3.11
 
       - name: Install dependencies
         run: |
@@ -77,9 +76,9 @@ jobs:
 
       - name: Run role tests
         run: >-
-          MY_MOLECULE_CONTAINER=${{ matrix.container.name }}
-          MY_MOLECULE_IMAGE=${{ matrix.container.base_image }}
-          MY_MOLECULE_OS_FAMILY=${{ matrix.container.os_family }}
+          MY_MOLECULE_CONTAINER=${{ matrix.container }}
+          MY_MOLECULE_IMAGE=${{ matrix.container }}
           MY_MOLECULE_VERSION=${{ matrix.version }}
           MY_MOLECULE_DATABASE=${{ matrix.database }}
+          MY_MOLECULE_DOCKER_COMMAND=${{ matrix.command }}
           molecule test -s ${{ matrix.collection_role }}

@@ -1,22 +1,24 @@
 zabbix_valid_proxy_versions:
   # Debian
   "12":
+    - 7.0
     - 6.4
     - 6.0
   "11":
+    - 7.0
     - 6.4
-    - 6.2
     - 6.0
   "24":
+    - 7.0
     - 6.4
     - 6.0
   "22":
+    - 7.0
     - 6.4
-    - 6.2
     - 6.0
   "20":
+    - 7.0
     - 6.4
-    - 6.2
     - 6.0
 
 _zabbix_proxy_pgsql_dependencies:
@@ -26,27 +28,25 @@ _zabbix_proxy_pgsql_dependencies:
 _zabbix_proxy_mysql_dependencies:
   # Debian
   "12":
-    - default-mysql-client
+    - "{{ zabbix_proxy_install_database_client | ternary('default-mysql-client', '') }}"
     - python3-pymysql
   "11":
-    - default-mysql-client
+    - "{{ zabbix_proxy_install_database_client | ternary('default-mysql-client', '') }}"
     - python3-pymysql
   # Ubuntu
   "24":
-    - default-mysql-client
+    - "{{ zabbix_proxy_install_database_client | ternary('default-mysql-client', '') }}"
     - python3-mysqldb
   "22":
-    - default-mysql-client
+    - "{{ zabbix_proxy_install_database_client | ternary('default-mysql-client', '') }}"
     - python3-pymysql
   "20":
-    - default-mysql-client
+    - "{{ zabbix_proxy_install_database_client | ternary('default-mysql-client', '') }}"
     - python3-pymysql
 
 _zabbix_proxy_sqlite3_dependencies:
   - sqlite3
 
-debian_keyring_path: /etc/apt/keyrings/
-zabbix_gpg_key: "{{ debian_keyring_path }}zabbix-repo.asc"
 _zabbix_proxy_fping6location: /usr/bin/fping6
 _zabbix_proxy_fpinglocation: /usr/bin/fping
 

@@ -7,12 +7,18 @@ on:
       - "molecule/zabbix_web/**"
       - "molecule/requirements.txt"
       - ".github/workflows/web.yml"
+      - "roles/zabbix_repo/**"
+      - "molecule/zabbix_repo/**"
+      - ".github/workflows/repo.yml"
   pull_request:
     paths:
       - "roles/zabbix_web/**"
       - "molecule/zabbix_web/**"
       - "molecule/requirements.txt"
       - ".github/workflows/web.yml"
+      - "roles/zabbix_repo/**"
+      - "molecule/zabbix_repo/**"
+      - ".github/workflows/repo.yml"
 jobs:
   molecule:
     runs-on: ubuntu-20.04
@@ -27,31 +33,33 @@ jobs:
           - ubuntu2004
           - debian12
           - debian11
+          # - opensuseleap15
         collection_role:
           - zabbix_web
         database:
           - mysql
           - pgsql
         web_server:
+          # maybe add apache?
           - nginx
           - apache
         version:
+          - v70
           - v64
-          - v62
           - v60
         exclude:
-          - container: ubuntu2404
-            version: v62
-          - container: debian12
-            version: v62
+          - container: ubuntu2004
+            version: v70
+          - container: debian11
+            version: v70
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: 3.11
 
       - name: Install dependencies
         run: |

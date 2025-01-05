@@ -75,18 +75,19 @@
 
 - name: "Fail invalid specified agent_listenip"
   ansible.builtin.fail:
-    msg: "The agent_listenip does not exist"
+    msg: "The {{ item }} (agent_listenip) does not exist"
   when:
-    - zabbix_agent_listenip != '0.0.0.0'
-    - zabbix_agent_listenip != '127.0.0.1'
-    - (zabbix_agent_listenip not in ansible_all_ipv4_addresses)
+    - item != '0.0.0.0'
+    - item != '127.0.0.1'
+    - item not in ansible_all_ipv4_addresses
+  with_items:
+    "{{ zabbix_agent_listenip | split(',') }}"
   tags:
     - config
 
 - name: "Configure SELinux when enabled"
   ansible.builtin.include_tasks: selinux.yml
-  when:
-    - zabbix_selinux | bool
+  when: ansible_facts.selinux.status | default('disabled') == 'enabled'
 
 - name: "Adding zabbix group"
   ansible.builtin.group:
@@ -129,13 +130,16 @@
   tags:
     - config
 
-- name: "Create include dir zabbix-agent"
+- name: "Create include dirs zabbix-agent"
   ansible.builtin.file:
-    path: "{{ zabbix_agent_include }}"
+    path: "{{ include_dir }}"
     owner: root
     group: zabbix
     mode: "{{ zabbix_agent_include_mode }}"
     state: directory
+  loop: "{{ [zabbix_agent_include_dir] if zabbix_agent_include_dir is string else zabbix_agent_include_dir }}"
+  loop_control:
+    loop_var: 'include_dir'
   become: true
   tags:
     - config

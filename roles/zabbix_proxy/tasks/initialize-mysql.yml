@@ -18,15 +18,21 @@
 # NOTE: Upgrading system-packages with pip is generally a bad idea, but
 # these packaged older versions seems to have a problem with mysql 8 and above
 - name: Upgrade pymysql
-  when:
-    - ansible_facts['distribution'] in ['CentOS', 'Debian', 'Ubuntu']
-    - ansible_facts['distribution_release'] in ['Core', 'buster', 'bullseye', 'bionic', 'focal']
+  when: _upgrade_debian_pymysql or _upgrade_suse_pymysql
   ansible.builtin.pip:
     name: "pymysql>=0.10.0,<0.11.0"
     state: latest
+  vars:
+    _upgrade_debian_pymysql: "{{ (ansible_facts['distribution'] in ['Debian', 'Ubuntu'] and ansible_facts['distribution_release'] in ['bullseye', 'focal']) }}"
+    _upgrade_suse_pymysql: "{{ ansible_facts['os_family'] in ['Suse'] }}"
+  tags:
+    - install
+    - database
+    - dependencies
 
 - name: "MySQL Database prep"
   when: zabbix_proxy_database_creation | bool
+  become: "{{ zabbix_proxy_dbhost_run_install }}"
   delegate_to: "{{ zabbix_proxy_real_dbhost | default(zabbix_proxy_dbhost_run_install | ternary(delegated_dbhost, inventory_hostname)) }}"
   vars:
     delegated_dbhost: "{{ (zabbix_proxy_dbhost == 'localhost') | ternary(inventory_hostname, zabbix_proxy_dbhost) }}"
@@ -56,12 +62,14 @@
         login_unix_socket: "{{ zabbix_proxy_mysql_login_unix_socket | default(omit) }}"
         name: "{{ zabbix_proxy_dbuser }}"
         password: "{{ zabbix_proxy_dbpassword }}"
-        priv: "{{ zabbix_proxy_dbname }}.*:ALL"
         host: "{{ zabbix_proxy_privileged_host }}"
+        priv: "{{ zabbix_proxy_dbname }}.*:ALL"
         state: present
 
 - name: "MySQL verify or create schema"
   when: zabbix_proxy_database_sqlload | bool
+  vars:
+    delegated_dbhost: "{{ (zabbix_proxy_dbhost == 'localhost') | ternary(inventory_hostname, zabbix_proxy_dbhost) }}"
   tags:
     - database
   block:
@@ -76,8 +84,6 @@
   rescue:
     - name: "MySQL | Get and set schema import overrides"
       delegate_to: "{{ zabbix_proxy_real_dbhost | default(zabbix_proxy_dbhost_run_install | ternary(delegated_dbhost, inventory_hostname)) }}"
-      vars:
-        delegated_dbhost: "{{ (zabbix_proxy_dbhost == 'localhost') | ternary(inventory_hostname, zabbix_proxy_dbhost) }}"
       block:
         - name: "MySQL | Get current value for variables"
           community.mysql.mysql_variables:
@@ -95,15 +101,15 @@
           register: _mysql_variable_defaults
 
         - name: "MySQL | Set variable overrides for schema import"
-          when: item.msg != _mysql_schema_import_overrides[item.name]
           community.mysql.mysql_variables:
             variable: "{{ item.name }}"
             value: "{{ _mysql_schema_import_overrides[item.name] }}"
-            login_host: "{{ zabbix_proxy_mysql_login_host | default(omit) }}"
             login_user: "{{ zabbix_proxy_mysql_login_user | default(omit) }}"
             login_password: "{{ zabbix_proxy_mysql_login_password | default(omit) }}"
+            login_host: "{{ zabbix_proxy_mysql_login_host | default(omit) }}"
             login_port: "{{ zabbix_proxy_mysql_login_port | default(omit) }}"
             login_unix_socket: "{{ zabbix_proxy_mysql_login_unix_socket | default(omit) }}"
+          when: item.msg != _mysql_schema_import_overrides[item.name]
           loop: "{{ _mysql_variable_defaults.results }}"
           loop_control:
             label: "{{ item.name }}: {{ _mysql_schema_import_overrides[item.name] }}"
@@ -126,10 +132,7 @@
 
   always:
     - name: "MySQL | Revert variable overrides for schema import"
-      when: _mysql_variable_defaults is defined
       delegate_to: "{{ zabbix_proxy_real_dbhost | default(zabbix_proxy_dbhost_run_install | ternary(delegated_dbhost, inventory_hostname)) }}"
-      vars:
-        delegated_dbhost: "{{ (zabbix_proxy_dbhost == 'localhost') | ternary(inventory_hostname, zabbix_proxy_dbhost) }}"
       community.mysql.mysql_variables:
         variable: "{{ item.name }}"
         value: "{{ item.msg }}"

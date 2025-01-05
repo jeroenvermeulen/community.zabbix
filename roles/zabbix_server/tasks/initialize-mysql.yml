@@ -14,8 +14,23 @@
     - database
     - dependencies
 
+# NOTE: Upgrading system-packages with pip is generally a bad idea, but
+# these packaged older versions seems to have a problem with mysql 8 and above
+- name: Upgrade pymysql
+  when: _upgrade_debian_pymysql or _upgrade_suse_pymysql
+  ansible.builtin.pip:
+    name: "pymysql>=0.10.0,<0.11.0"
+    state: latest
+  vars:
+    _upgrade_debian_pymysql: "{{ (ansible_facts['distribution'] in ['Debian', 'Ubuntu'] and ansible_facts['distribution_release'] in ['bullseye', 'focal']) }}"
+    _upgrade_suse_pymysql: "{{ ansible_facts['os_family'] in ['Suse'] }}"
+  tags:
+    - install
+    - database
+    - dependencies
+
 - name: "MySQL Database prep"
-  when: zabbix_server_database_creation
+  when: zabbix_server_database_creation | bool
   become: "{{ zabbix_server_dbhost_run_install }}"
   delegate_to: "{{ zabbix_server_real_dbhost | default(zabbix_server_dbhost_run_install | ternary(delegated_dbhost, inventory_hostname)) }}"
   vars:
@@ -30,6 +45,7 @@
         login_host: "{{ zabbix_server_mysql_login_host | default(omit) }}"
         login_port: "{{ zabbix_server_mysql_login_port | default(omit) }}"
         login_unix_socket: "{{ zabbix_server_mysql_login_unix_socket | default(omit) }}"
+        check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
         name: "{{ zabbix_server_dbname }}"
         encoding: "{{ zabbix_server_dbencoding }}"
         collation: "{{ zabbix_server_dbcollation }}"
@@ -43,6 +59,7 @@
         login_host: "{{ zabbix_server_mysql_login_host | default(omit) }}"
         login_port: "{{ zabbix_server_mysql_login_port | default(omit) }}"
         login_unix_socket: "{{ zabbix_server_mysql_login_unix_socket | default(omit) }}"
+        check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
         name: "{{ zabbix_server_dbuser }}"
         password: "{{ zabbix_server_dbpassword }}"
         host: "{{ zabbix_server_privileged_host }}"
@@ -67,6 +84,7 @@
         login_host: "{{ zabbix_server_dbhost }}"
         login_port: "{{ zabbix_server_dbport }}"
         login_db: "{{ zabbix_server_dbname }}"
+        check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
         query: "SELECT mandatory FROM dbversion"
   rescue:
     - name: "MySQL | Get and set schema import overrides"
@@ -80,6 +98,7 @@
             login_host: "{{ zabbix_server_mysql_login_host | default(omit) }}"
             login_port: "{{ zabbix_server_mysql_login_port | default(omit) }}"
             login_unix_socket: "{{ zabbix_server_mysql_login_unix_socket | default(omit) }}"
+            check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
           loop:
             - innodb_default_row_format
             - log_bin_trust_function_creators
@@ -96,6 +115,7 @@
             login_host: "{{ zabbix_server_mysql_login_host | default(omit) }}"
             login_port: "{{ zabbix_server_mysql_login_port | default(omit) }}"
             login_unix_socket: "{{ zabbix_server_mysql_login_unix_socket | default(omit) }}"
+            check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
           when: item.msg != _mysql_schema_import_overrides[item.name]
           loop: "{{ _mysql_variable_defaults.results }}"
           loop_control:
@@ -115,6 +135,7 @@
             login_host: "{{ zabbix_server_mysql_login_host | default(omit) }}"
             login_port: "{{ zabbix_server_mysql_login_port | default(omit) }}"
             login_unix_socket: "{{ zabbix_server_mysql_login_unix_socket | default(omit) }}"
+            check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
 
     - name: "MySQL | Import schema"
       community.mysql.mysql_db:
@@ -122,6 +143,7 @@
         login_password: "{{ zabbix_server_dbpassword }}"
         login_host: "{{ zabbix_server_dbhost }}"
         login_port: "{{ zabbix_server_dbport }}"
+        check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
         name: "{{ zabbix_server_dbname }}"
         encoding: "{{ zabbix_server_dbencoding }}"
         collation: "{{ zabbix_server_dbcollation }}"
@@ -139,6 +161,7 @@
         login_host: "{{ zabbix_server_mysql_login_host | default(omit) }}"
         login_port: "{{ zabbix_server_mysql_login_port | default(omit) }}"
         login_unix_socket: "{{ zabbix_server_mysql_login_unix_socket | default(omit) }}"
+        check_hostname: "{{ zabbix_server_dbtlsconnect is defined and zabbix_server_dbtlsconnect != '' }}"
       loop: "{{ _mysql_variable_defaults.results | default([]) }}"
       loop_control:
         label: "{{ item.name }}: {{ item.msg }}"
